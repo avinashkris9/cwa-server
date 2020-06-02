@@ -74,7 +74,7 @@ public class S3ClientWrapper implements ObjectStoreClient {
             s3Client.listObjectsV2(ListObjectsV2Request.builder().prefix(prefix).bucket(bucket).build());
         return response.contents().stream().map(S3ClientWrapper::buildS3Object).collect(toList());
       } catch (SdkException e) {
-        if (currentTry > maxRetries) {
+        if (currentTry >= maxRetries) {
           throw new ObjectStoreOperationFailedException("Failed to upload object to object store", e);
         }
         logger.debug("Failed to upload object to object store. Attempt " + currentTry + " of " + maxRetries);
@@ -97,12 +97,11 @@ public class S3ClientWrapper implements ObjectStoreClient {
 
     while (true) {
       currentTry++;
-
       try {
         s3Client.putObject(requestBuilder.build(), bodyFile);
         break;
       } catch (SdkException e) {
-        if (currentTry > maxRetries) {
+        if (currentTry >= maxRetries) {
           throw new ObjectStoreOperationFailedException("Failed to upload object to object store", e);
         }
         logger.debug("Failed to upload object to object store. Attempt " + currentTry + " of " + maxRetries);
@@ -124,7 +123,6 @@ public class S3ClientWrapper implements ObjectStoreClient {
     while (true) {
       currentTry++;
       try {
-        // TODO
         DeleteObjectsResponse response = s3Client.deleteObjects(
             DeleteObjectsRequest.builder()
                 .bucket(bucket)
@@ -132,7 +130,7 @@ public class S3ClientWrapper implements ObjectStoreClient {
 
         if (response.hasErrors()) {
           String errMessage = "Failed to remove objects from object store.";
-          if (currentTry > maxRetries) {
+          if (currentTry >= maxRetries) {
             logger.error("{} {}", errMessage, response.errors());
             throw new ObjectStoreOperationFailedException(errMessage);
           }
@@ -141,7 +139,7 @@ public class S3ClientWrapper implements ObjectStoreClient {
           break;
         }
       } catch (SdkException e) {
-        if (currentTry > maxRetries) {
+        if (currentTry >= maxRetries) {
           throw new ObjectStoreOperationFailedException("Failed to remove objects from object store.", e);
         }
         logger.debug("Failed to remove objects from object store. Attempt " + currentTry + " of " + maxRetries);

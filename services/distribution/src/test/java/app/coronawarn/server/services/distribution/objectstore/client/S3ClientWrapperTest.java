@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -165,6 +166,16 @@ class S3ClientWrapperTest {
         .isThrownBy(() -> s3ClientWrapper.getObjects(VALID_BUCKET_NAME, VALID_PREFIX));
   }
 
+  @ParameterizedTest
+  @ValueSource(classes = {NoSuchBucketException.class, S3Exception.class, SdkClientException.class, SdkException.class})
+  void shouldAttemptToGetObjectsThreeTimesAndThenThrow(Class<Exception> cause) {
+    when(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).thenThrow(cause);
+    assertThatExceptionOfType(ObjectStoreOperationFailedException.class)
+        .isThrownBy(() -> s3ClientWrapper.getObjects(VALID_BUCKET_NAME, VALID_PREFIX));
+
+    verify(s3Client, times(3)).listObjectsV2(any(ListObjectsV2Request.class));
+  }
+
   @Test
   void testPutObjectForNoHeaders() {
     s3ClientWrapper.putObject(VALID_BUCKET_NAME, VALID_NAME, Path.of(""), emptyMap());
@@ -202,6 +213,16 @@ class S3ClientWrapperTest {
         .isThrownBy(() -> s3ClientWrapper.putObject(VALID_BUCKET_NAME, VALID_PREFIX, Path.of(""), emptyMap()));
   }
 
+  @ParameterizedTest
+  @ValueSource(classes = {NoSuchBucketException.class, S3Exception.class, SdkClientException.class, SdkException.class})
+  void shouldAttemptToUploadObjectThreeTimesAndThenThrow(Class<Exception> cause) {
+    when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenThrow(cause);
+    assertThatExceptionOfType(ObjectStoreOperationFailedException.class)
+        .isThrownBy(() -> s3ClientWrapper.putObject(VALID_BUCKET_NAME, VALID_PREFIX, Path.of(""), emptyMap()));
+
+    verify(s3Client, times(3)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+  }
+
   @Test
   void testRemoveObjects() {
     when(s3Client.deleteObjects(any(DeleteObjectsRequest.class))).thenReturn(DeleteObjectsResponse.builder().build());
@@ -235,5 +256,15 @@ class S3ClientWrapperTest {
     when(s3Client.deleteObjects(any(DeleteObjectsRequest.class))).thenThrow(cause);
     assertThatExceptionOfType(ObjectStoreOperationFailedException.class)
         .isThrownBy(() -> s3ClientWrapper.removeObjects(VALID_BUCKET_NAME, List.of(VALID_NAME)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(classes = {NoSuchBucketException.class, S3Exception.class, SdkClientException.class, SdkException.class})
+  void shouldAttemptToRemoveObjectThreeTimesAndThenThrow(Class<Exception> cause) {
+    when(s3Client.deleteObjects(any(DeleteObjectsRequest.class))).thenThrow(cause);
+    assertThatExceptionOfType(ObjectStoreOperationFailedException.class)
+        .isThrownBy(() -> s3ClientWrapper.removeObjects(VALID_BUCKET_NAME, List.of(VALID_NAME)));
+
+    verify(s3Client, times(3)).deleteObjects(any(DeleteObjectsRequest.class));
   }
 }
